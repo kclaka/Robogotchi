@@ -1,6 +1,7 @@
 # Write your code here
 import random
 
+
 def getUserInput():
     done = False
     number = input("What is your number? ")
@@ -149,18 +150,6 @@ def setName():
     return name
 
 
-def getHeat():
-    pass
-
-
-def getSkill():
-    pass
-
-
-def changeRobotState():
-    pass
-
-
 def controlRobot():
     name = setName()
 
@@ -240,7 +229,6 @@ def controlRobot():
         elif choice == choices[5]:
             break
         print("Game over")
-
 
 
 controlRobot()

@@ -10,21 +10,9 @@ class RobogotchiTestParent(StageTest):
 
 
     def prs_print_check(self, output, answer):
-        parsed_output = output.split("\n")
-        if not parsed_output:
-            raise WrongAnswerException("Make sure your program outputs all required lines.")
-        parsed_output = parsed_output[0].strip().split()
-        if not parsed_output:
-            raise WrongAnswerException("Make sure your program outputs results of the Rock-paper-scissors game in the required format.")
-        robot_answer = parsed_output[-1].lower().strip('.')
-        if robot_answer not in ['scissors', 'paper', 'rock']:
-            raise WrongAnswerException(f"A problem occurred during the processing of the following output:\n"
-                                       f"\"{output}\"\n"
-                                       f"The last word in the first line of this output is supposed to contain an option name:\n"
-                                       f"rock, paper or scissors.\n"
-                                       f"However, the last word of the first line does not seem to be equal to any of these words.")
-
+        parsed_output = output.split()[:-4]
         try:
+            robot_answer = parsed_output[2]  if parsed_output[1] == 'chose' else parsed_output[3]
             ideal = self.check_who_won_ro(robot_answer=robot_answer,
                                           human_answer=answer).split('\n')
             ideal = [line for line in ideal if line]
@@ -104,6 +92,23 @@ class RobogotchiTestParent(StageTest):
                 return False
         return True
 
+    def oil_what_prints(self, output):
+        if (self.rust == 0) and ('fine' in output):
+            if "Daneel is fine, no need to oil" not in output:
+                return False
+        elif self.boredom == 100:
+            if "Daneel is too bored" not in output:
+                return False
+        else:
+            i = 10 if 'was 10' in output else 20
+            text = f"Daneel's level of rust was {self.rust+i}. Now it is {self.rust}." \
+                   f"\nDaneel is less rusty"
+            text = text.split('\n')
+            for tex in text:
+                if tex.lower().strip() not in output.lower():
+                    return False
+        return True
+
     def recharge_what_prints(self, output):
         if self.battery == 100 and 'level' not in output:
             if "Daneel is charged" not in output:
@@ -122,7 +127,7 @@ class RobogotchiTestParent(StageTest):
         return True
 
     def sleep_what_prints(self, output):
-        if self.overheat == 0 and self.overheat_previous == 0:
+        if self.overheat == 0:
             if "Daneel is cool" not in output:
                 return False
         else:
@@ -130,11 +135,23 @@ class RobogotchiTestParent(StageTest):
                 insertion  = '\nDaneel cooled off'
             else:
                 insertion = '\nDaneel is cool'
-            text = f"Daneel's level of overheat was {self.overheat_previous}. Now it is {self.overheat}.\n" \
+            text = f"Daneel's level of overheat was {self.overheat + 20}. Now it is {self.overheat}.\n" \
                    f"{insertion}"
             text = text.split('\n')
             for tex in text:
                 if tex.lower() not in output.lower():
+                    return False
+        return True
+
+    def learn_changes(self, output):
+        if self.skills != 100:
+            text = f"Daneel's level of skill was {self.skills-10}. Now it is {self.skills}." \
+                   f"\nDaneel's level of overheat was {self.overheat-10}. Now it is {self.overheat}." \
+                   f"\nDaneel's level of the battery was {self.battery+10}. Now it is {self.battery}." \
+                   f"\nDaneel's level of boredom was {self.boredom-5}. Now it is {self.boredom}." \
+                   f"\n\nDaneel has become smarter!".split('\n')
+            for tex in text:
+                if tex.lower().strip() not in output.lower():
                     return False
         return True
 
@@ -158,15 +175,35 @@ class RobogotchiTestParent(StageTest):
         return True
 
     def increase_the_params(self, command):
-        if command == 'play':
+        if command == 'learn':
+            self.skills += 10
+            self.overheat = self.overheat + 10 if self.overheat + 10 <= 100 else 100
+            self.battery = self.battery - 10 if self.battery - 10 > 0 else 0
+            self.boredom = self.boredom + 5 if self.boredom + 5 < 100 else 100
+        elif command == 'play':
             self.boredom = self.boredom - 10 if self.boredom - 10 >= 0 else self.boredom - self.boredom
             self.overheat = self.overheat + 10 if self.overheat + 10 < 100 else 100
+        elif command == 'work':
+            self.boredom = self.boredom + 10 if self.boredom + 10 < 100 else 100
+            self.overheat = self.overheat + 10 if self.overheat + 10 < 100 else 100
+            self.battery = self.battery - 10 if self.battery - 10 > 0 else 0
+        elif command == 'oil':
+            self.rust = self.rust - 20 if self.rust - 20 > 0 else self.rust-self.rust
         elif command == 'sleep':
             self.overheat = self.overheat - 20 if self.overheat - 20 > 0 else self.overheat-self.overheat
         elif command == 'recharge':
             self.overheat = self.overheat - 5 if self.overheat - 5 > 0 else 0
             self.battery = self.battery + 10 if self.battery + 10 < 100 else 100
             self.boredom = self.boredom + 5 if self.boredom + 5 < 100 else 100
+
+    def get_the_rust(self, output):
+        if 'puddle' in output:
+            return 10
+        elif 'sprinkler' in output:
+            return 30
+        elif 'pool' in output:
+            return 50
+        return 0
 
 
     def play_what_prints_check(self, output):
@@ -179,18 +216,58 @@ class RobogotchiTestParent(StageTest):
             return False
         return True
 
+    def work_what_prints(self, output):
+        if self.skills < 50:
+            if 'Daneel has got to learn before working' not in output:
+                return False
+        return True
+
     def wrong_option_what_prints(self, output):
         check = "invalid input" in output.lower() and 'try again' in output.lower()
         if not check:
             return False
         return True
 
+    def check_the_rust_output(self, output, action):
+        if action == 'play':
+            some_rust = f"\nDaneel's level of overheat was {self.overheat-10}. Now it is {self.overheat}." \
+                               f"\nDaneel's level of boredom was {self.boredom_previous}. Now it is {self.boredom}."
+            boredom_str = f"\nDaneel's level of boredom was {self.boredom_previous}. Now it is {self.boredom}."
+            rust_dict = {0: '', 10: f"\nOh no, Daneel stepped into a puddle",
+                         30: '\nOh, Daneel encountered a sprinkler', 50: '\nGuess what! Daneel fell into the pool'}
+            if self.boredom_previous == 0:
+                some_rust = some_rust.replace(boredom_str, '')
+            if self.boredom == 0:
+                some_rust += "\nDaneel is in a great mood"
+            if self.get_the_rust(output) > 0:
+                some_rust += f"\nDaneel's level of rust was {self.rust_previous}. Now it is {self.rust}"
+                some_rust += rust_dict[self.get_the_rust(output)]
+            for line in some_rust.split('\n'):
+                if line.lower().strip() not in output.lower():
+                    return False
+            return True
+        elif action == 'work':
+            some_rust = f"Daneel's level of boredom was {self.boredom-10}. Now it is {self.boredom}." \
+                      f"\nDaneel's level of overheat was {self.overheat-10}. Now it is {self.overheat}." \
+                      f"\nDaneel's level of the battery was {self.battery+10}. Now it is {self.battery}." \
+                      f"\n\nDaneel did well!"
+            rust_dict = {0: '', 10: f"\nOh no, Daneel stepped into a puddle",
+                         30: '\nOh, Daneel encountered a sprinkler', 50: '\nGuess what! Daneel fell into the pool'}
+            if self.get_the_rust(output) > 0:
+                some_rust += f"\nDaneel's level of rust was {self.rust_previous}. Now it is {self.rust}"
+                some_rust += rust_dict[self.get_the_rust(output)]
+            for line in some_rust.split('\n'):
+                if line.lower().strip() not in output.lower():
+                    return False
+            return True
+
     def info_what_prints(self, output):
         text = f"Daneel's stats are:" \
                f"\nbattery is {self.battery}," \
                f"\noverheat is {self.overheat}," \
                f"\nskill level is {self.skills}," \
-               f"\nboredom is {self.boredom}."
+               f"\nboredom is {self.boredom}," \
+               f"\nrust is {self.rust}."
         text = text.split('\n')
         for tex in text:
             if tex.strip().lower() not in output.lower():
@@ -255,13 +332,28 @@ class RobogotchiTestParent(StageTest):
             self.lost_roshambo = 0
             self.draw_roshambo = 0
 
+    def fresh_start(self):
+        self.skills = 0
+        self.overheat = 0
+        self.boredom = 0
+        self.battery = 100
+        self.rust = 0
+
+        self.boredom_previous = 0
+        self.rust_previous = 0
 
 
-class PreRobogotchiTest(RobogotchiTestParent):
+class RobogotchiTest1(RobogotchiTestParent):
 
-    ideal_interface = f"\nAvailable interactions with Daneel:\nexit – Exit" \
-               f"\ninfo – Check the vitals\nrecharge – Recharge" \
-               f"\nsleep – Sleep mode\nplay – Play\n\nChoose:"
+    ideal_interface = "\nAvailable interactions with Daneel:" \
+                      "\nexit – Exit\ninfo – Check the vitals" \
+                      "\nwork – Work" \
+                      "\nplay – Play" \
+                      "\noil – Oil" \
+                      "\nrecharge – Recharge" \
+                      "\nsleep – Sleep mode" \
+                      "\nlearn – Learn skills\n" \
+                      "\nChoose:"
 
     won_roshambo = 0
     lost_roshambo = 0
@@ -275,30 +367,41 @@ class PreRobogotchiTest(RobogotchiTestParent):
     overheat = 0
     boredom = 0
     battery = 100
+    rust = 0
 
     boredom_previous = 0
-    overheat_previous = 0
+    rust_previous = 0
 
     def generate(self) -> List[TestCase]:
         return [
-            TestCase(stdin=[self.func1, self.func2, self.func3, self.func4, self.func5,
-                            self.func6, self.func7, self.func8, self.func9, self.func10,
-                            self.func11, self.func12, self.func13, self.func14, self.func15,
-                            self.func16, self.func17, self.func18, self.func19, self.func20,
-                            self.func21, self.func22, self.func23, self.func24, self.func25,
-                            self.func26, self.func27, self.func28, self.func29, self.func30,
-                            self.func31, self.func32, self.func33]),
-            TestCase(stdin=[self.func34, self.func35, self.func36, self.func37, self.func38,
-                            self.func39, self.func40, self.func41, self.func42, self.func43,
-                            self.func44, self.func45, self.func46, self.func47, self.func48,
-                            self.func49, self.func50, self.func51, self.func52, self.func53,
-                            self.func54, self.func55, self.func56, self.func57, self.func58,
-                            self.func59, self.func60, self.func61, self.func62, self.func63,
-                            self.func64, self.func65, self.func66, self.func67, self.func68,
-                            self.func69, self.func70, self.func71, self.func72, self.func73,
-                            self.func74, self.func75, self.func76, self.func77, self.func78,
-                            self.func79, self.func80],
-                            check_function=self.check_boom)
+            TestCase(stdin=[self.func1, self.func2, self.func3, self.func4, self.func5, self.func6, self.func7]),
+            TestCase(stdin=[self.func8, self.func9, self.func10, self.func11, self.func12, self.func13, self.func14,
+                            self.func15, self.func16, self.func17]),
+            TestCase(stdin=[self.func18, self.func19, self.func20, self.func21, self.func22, self.func23, self.func24,
+                            self.func25, self.func26, self.func27, self.func28, self.func29, self.func30, self.func31,
+                            self.func32, self.func33, self.func34]),
+            TestCase(stdin=[self.func35, self.func36, self.func37, self.func38, self.func39, self.func40, self.func41,
+                            self.func42, self.func43, self.func44, self.func45, self.func46, self.func47, self.func48,
+                            self.func49, self.func50, self.func51, self.func52, self.func53, self.func54, self.func55,
+                            self.func56, self.func57, self.func58, self.func59, self.func60, self.func61, self.func62,
+                            self.func63, self.func64, self.func65, self.func66, self.func67, self.func68, self.func69,
+                            self.func70, self.func71, self.func72, self.func73, self.func74, self.func75, self.func76,
+                            self.func77, self.func78, self.func79, self.func80]),
+            TestCase(stdin=[self.func81, self.func82, self.func83, self.func84, self.func85, self.func86, self.func87,
+                            self.func88, self.func89, self.func90, self.func91, self.func92, self.func93, self.func94],
+                     check_function=self.check_boom),
+            TestCase(stdin=[self.func95, self.func96, self.func97, self.func98, self.func99, self.func100, self.func101,
+                            self.func102, self.func103, self.func104, self.func105, self.func106, self.func107,
+                            self.func108, self.func109, self.func110, self.func111, self.func112, self.func113,
+                            self.func114, self.func115, self.func116, self.func117, self.func118, self.func119,
+                            self.func120, self.func121, self.func122, self.func123, self.func124, self.func125,
+                            self.func126, self.func127, self.func128, self.func129, self.func130, self.func131,
+                            self.func132, self.func133, self.func134, self.func135, self.func136, self.func137,
+                            self.func138, self.func139, self.func140], check_function=self.check_rust),
+            TestCase(stdin=[self.func141, self.func142, self.func143, self.func144, self.func145, self.func146,
+                            self.func147, self.func148, self.func149, self.func150, self.func151, self.func152,
+                            self.func153, self.func154, self.func155, self.func156, self.func157, self.func158,
+                            self.func159, self.func160, self.func161, self.func162], check_function=self.check_rust)
         ]
 
     """Test 1"""
@@ -311,523 +414,1319 @@ class PreRobogotchiTest(RobogotchiTestParent):
     def func2(self, output):
         if not self.interface_prints_check(output):
             return CheckResult.wrong("The interface is different from the exemplary one")
-        self.increase_the_params('play')
-        return 'play'
+        return 'info'
 
     def func3(self, output):
-        if not self.play_what_prints_check(output):
-            return CheckResult.wrong("The program should offer to choose a game")
-        return 'Numbers'
+        if not self.info_what_prints(output):
+            return CheckResult.wrong("The information provided is incorrect")
+        if not self.interface_prints_check(output):
+            return CheckResult.wrong("The interface is different from the exemplary one")
+        return 'oil'
 
     def func4(self, output):
-        if not self.numbers_what_prints_check(output):
-            return CheckResult.wrong('The program should ask the user for the number')
-        return '96753'
-
-    def func5(self, output):
-        if not self.normal_number_prints_check(output, 96753):
-            return CheckResult.wrong("The result is incorrect or impossible to parse")
-        if not self.numbers_what_prints_check(output):
-            return CheckResult.wrong('The program should ask the user for the number')
-        return '333'
-
-    def func6(self, output):
-        if not self.normal_number_prints_check(output, 333):
-            return CheckResult.wrong("The result is incorrect or impossible to parse")
-        if not self.numbers_what_prints_check(output):
-            return CheckResult.wrong('The program should ask the user for the number')
-        return '987659'
-
-    def func7(self, output):
-        if not self.normal_number_prints_check(output, 987659):
-            return CheckResult.wrong("The result is incorrect or impossible to parse")
-        if not self.numbers_what_prints_check(output):
-            return CheckResult.wrong('The program should ask the user for the number')
-        return 'exit game'
-
-    def func8(self, output):
-        if not self.game_statistics_prints_check(output, 'numbers'):
-            return CheckResult.wrong("The statistics is incorrect")
-        if not self.interface_prints_check(output):
-            return CheckResult.wrong("The interface is different from the exemplary one")
-        self.zerify_numbers_count('numbers')
-        return 'info'
-
-    def func9(self, output):
-        if not self.info_what_prints(output):
-            return CheckResult.wrong("The information provided is incorrect")
-        if not self.interface_prints_check(output):
-            return CheckResult.wrong("The interface is different from the exemplary one")
-        self.overheat_previous = self.overheat
-        self.increase_the_params('sleep')
-        return 'sleep'
-
-    def func10(self, output):
-        if not self.sleep_what_prints(output):
-            return CheckResult.wrong("The robot should cool off properly")
-        if not self.interface_prints_check(output):
-            return CheckResult.wrong("The interface is different from the exemplary one")
-        self.increase_the_params('play')
-        return 'play'
-
-    def func11(self, output):
-        if not self.play_what_prints_check(output):
-            return CheckResult.wrong("The program should ask the user which game to play")
-        return 'Rock-paper-scissors'
-
-    def func12(self, output):
-        if not self.roshambo_what_prints_check(output):
-            return CheckResult.wrong("The game should ask the user for their move")
-        return 'rock'
-
-    def func13(self, output):
-        if not self.prs_print_check(output, 'rock'):
-            return CheckResult.wrong("Make sure your output is correct and complete")
-        return 'paper'
-
-    def func14(self, output):
-        if not self.prs_print_check(output, 'paper'):
-            return CheckResult.wrong("Make sure your output is correct and complete")
-        return 'scissors'
-
-    def func15(self, output):
-        if not self.prs_print_check(output, 'scissors'):
-            return CheckResult.wrong("Make sure your output is correct and complete")
-        return 'exit game'
-
-    def func16(self, output):
-        if not self.game_statistics_prints_check(output, 'roshambo'):
-            return CheckResult.wrong("The statistics is incorrect")
-        if not self.interface_prints_check(output):
-            return CheckResult.wrong("The interface is different from the exemplary one")
-        self.zerify_numbers_count('roshambo')
-        self.increase_the_params('play')
-        return 'play'
-
-    def func17(self, output):
-        if not self.play_what_prints_check(output):
-            return CheckResult.wrong("The program should offer to choose a game")
-        return 'Rock-paper-scissors'
-
-    def func18(self, output):
-        if not self.roshambo_what_prints_check(output):
-            return CheckResult.wrong("The game should ask the user for their move")
-        return 'rock'
-
-    def func19(self, output):
-        if not self.prs_print_check(output, 'rock'):
-            return CheckResult.wrong("Make sure your output is correct and complete")
-        if not self.roshambo_what_prints_check(output):
-            return CheckResult.wrong("The game should ask the user for their move")
-        return 'lightning'
-
-    def func20(self, output):
-        if not self.knife_exception(output):
-            return CheckResult.wrong("The program should inform the user about invalid input")
-        if not self.roshambo_what_prints_check(output):
-            return CheckResult.wrong("The game should ask the user for their move")
-        return 'exit game'
-
-    def func21(self, output):
-        if not self.game_statistics_prints_check(output, 'roshambo'):
-            return CheckResult.wrong("The statistics is incorrect")
-        if not self.interface_prints_check(output):
-            return CheckResult.wrong("The interface is different from the exemplary one")
-        self.zerify_numbers_count('roshambo')
-        return 'info'
-
-    def func22(self, output):
-        if not self.info_what_prints(output):
-            return CheckResult.wrong("The information provided is incorrect")
+        if not self.oil_what_prints(output):
+            return CheckResult.wrong("The program should print that the robot doesn't need oiling")
         if not self.interface_prints_check(output):
             return CheckResult.wrong("The interface is different from the exemplary one")
         return 'recharge'
 
-    def func23(self, output):
+    def func5(self, output):
         if not self.recharge_what_prints(output):
-            return CheckResult.wrong("The robot didn't recharge correctly")
+            return CheckResult.wrong("The program should print that the robot is charged")
         if not self.interface_prints_check(output):
             return CheckResult.wrong("The interface is different from the exemplary one")
-        self.increase_the_params('play')
-        return 'play'
-
-    def func24(self, output):
-        if not self.play_what_prints_check(output):
-            return CheckResult.wrong("The program should offer to choose a game")
-        return 'Numbers'
-
-    def func25(self, output):
-        if not self.numbers_what_prints_check(output):
-            return CheckResult.wrong('The program should ask the user for the number')
-        return '579'
-
-    def func26(self, output):
-        if not self.normal_number_prints_check(output, 579):
-            return CheckResult.wrong("The result is incorrect or impossible to parse")
-        if not self.numbers_what_prints_check(output):
-            return CheckResult.wrong('The program should ask the user for the number')
-        return 'hamsa'
-
-    def func27(self, output):
-        if not self.numbers_exceptions(output, 'hamsa'):
-            return CheckResult.wrong("The program should inform the user about invalid input")
-        if not self.numbers_what_prints_check(output):
-            return CheckResult.wrong('The program should ask the user for the number')
-        return '11113'
-
-    def func28(self, output):
-        if not self.normal_number_prints_check(output, 11113):
-            return CheckResult.wrong("The result is incorrect or impossible to parse")
-        if not self.numbers_what_prints_check(output):
-            return CheckResult.wrong('The program should ask the user for the number')
-        return '7789'
-
-    def func29(self, output):
-        if not self.normal_number_prints_check(output, 7789):
-            return CheckResult.wrong("The result is incorrect or impossible to parse")
-        if not self.numbers_what_prints_check(output):
-            return CheckResult.wrong('The program should ask the user for the number')
-        return 'exit game'
-
-    def func30(self, output):
-        if not self.game_statistics_prints_check(output, 'numbers'):
-            return CheckResult.wrong("The statistics is incorrect")
-        if not self.interface_prints_check(output):
-            return CheckResult.wrong("The interface is different from the exemplary one")
-        self.overheat_previous = self.overheat
-        self.increase_the_params('sleep')
-        self.zerify_numbers_count('numbers')
         return 'sleep'
 
-    def func31(self, output):
+    def func6(self, output):
         if not self.sleep_what_prints(output):
-            return CheckResult.wrong("The robot should cool off properly")
+            return CheckResult.wrong("The program should print that the robot is cool")
         if not self.interface_prints_check(output):
             return CheckResult.wrong("The interface is different from the exemplary one")
-        self.overheat_previous = self.overheat
-        self.increase_the_params('sleep')
-        return 'sleep'
+        self.increase_the_params('learn')
+        return 'learn'
 
-    def func32(self, output):
-        if not self.sleep_what_prints(output):
-            return CheckResult.wrong("The robot should cool off properly")
-        if not self.interface_prints_check(output):
-            return CheckResult.wrong("The interface is different from the exemplary one")
-        self.overheat_previous = self.overheat
-        return 'sleep'
-
-    def func33(self, output):
-        if not self.sleep_what_prints(output):
-            return CheckResult.wrong("The robot should cool off properly")
+    def func7(self, output):
+        if not self.learn_changes(output):
+            return CheckResult.wrong("The robot learnt something wrong")
         if not self.interface_prints_check(output):
             return CheckResult.wrong("The interface is different from the exemplary one")
         return 'exit'
 
     """Test 2"""
 
-    def func34(self, output):
-        if output.strip() != 'How will you call your robot?':
+    def func8(self, output):
+        self.fresh_start()
+        if 'how will you call your robot?' not in output.lower():
             return CheckResult.wrong("The program should suggest the user to name their robot")
         return 'Daneel'
 
-    def func35(self, output):
+    def func9(self, output):
         if not self.interface_prints_check(output):
             return CheckResult.wrong("The interface is different from the exemplary one")
+        self.increase_the_params('learn')
+        return 'learn'
+
+    def func10(self, output):
+        if not self.learn_changes(output):
+            return CheckResult.wrong("The stats message is incorrect")
+        self.boredom_previous = self.boredom
+        self.rust_previous = self.rust
         self.increase_the_params('play')
         return 'play'
 
-    def func36(self, output):
+    def func11(self, output):
         if not self.play_what_prints_check(output):
-            return CheckResult.wrong("The program should offer to choose a game")
-        return 'Numbers'
+            return CheckResult.wrong("The program should ask the user which game to play")
+        return 'rock-paper-scissors'
+
+    def func12(self, output):
+        if not self.roshambo_what_prints_check(output):
+            return CheckResult.wrong("The game should ask the user for their move")
+        return 'paper'
+
+    def func13(self, output):
+        if not self.prs_print_check(output, 'paper'):
+            return CheckResult.wrong("Make sure your output is correct and complete")
+        if not self.roshambo_what_prints_check(output):
+            return CheckResult.wrong("The game should ask the user for their move")
+        return 'exit game'
+
+    def func14(self, output):
+        self.rust += self.get_the_rust(output)
+        if not self.game_statistics_prints_check(output, 'roshambo'):
+            return CheckResult.wrong("The statistics is incorrect")
+        if not self.check_the_rust_output(output, 'play'):
+            return CheckResult.wrong("You printed a wrong message")
+        self.zerify_numbers_count('roshambo')
+        self.rust_previous = self.rust
+        if not self.interface_prints_check(output):
+            return CheckResult.wrong("The interface is different from the exemplary one")
+        return 'work'
+
+    def func15(self, output):
+        if not self.work_what_prints(output):
+            return CheckResult.wrong("The user should be informed that the robot needs to learn")
+        return 'fly to the moon'
+
+    def func16(self, output):
+        if not self.wrong_option_what_prints(output):
+            return CheckResult.wrong("The user should be informed about incorrect input")
+        self.increase_the_params('learn')
+        return 'learn'
+
+    def func17(self, output):
+        if not self.learn_changes(output):
+            return CheckResult.wrong("The stats message is incorrect")
+        return 'exit'
+
+    """Test 3"""
+
+    def func18(self, output):
+        self.fresh_start()
+        if 'how will you call your robot?' not in output.lower():
+            return CheckResult.wrong("The program should suggest the user to name their robot")
+        return 'Daneel'
+
+    def func19(self, output):
+        if not self.interface_prints_check(output):
+            return CheckResult.wrong("The interface is different from the exemplary one")
+        self.increase_the_params('learn')
+        return 'learn'
+
+    def func20(self, output):
+        if not self.learn_changes(output):
+            return CheckResult.wrong("The robot learnt something wrong")
+        if not self.interface_prints_check(output):
+            return CheckResult.wrong("The interface is different from the exemplary one")
+        self.increase_the_params('learn')
+        return 'learn'
+
+    def func21(self, output):
+        if not self.learn_changes(output):
+            return CheckResult.wrong("The robot learnt something wrong")
+        if not self.interface_prints_check(output):
+            return CheckResult.wrong("The interface is different from the exemplary one")
+        self.increase_the_params('learn')
+        return 'learn'
+
+    def func22(self, output):
+        if not self.learn_changes(output):
+            return CheckResult.wrong("The robot learnt something wrong")
+        if not self.interface_prints_check(output):
+            return CheckResult.wrong("The interface is different from the exemplary one")
+        self.increase_the_params('learn')
+        return 'learn'
+
+    def func23(self, output):
+        if not self.learn_changes(output):
+            return CheckResult.wrong("The robot learnt something wrong")
+        if not self.interface_prints_check(output):
+            return CheckResult.wrong("The interface is different from the exemplary one")
+        self.increase_the_params('learn')
+        return 'learn'
+
+    def func24(self, output):
+        if not self.learn_changes(output):
+            return CheckResult.wrong("The robot learnt something wrong")
+        if not self.interface_prints_check(output):
+            return CheckResult.wrong("The interface is different from the exemplary one")
+        self.rust_previous = self.rust
+        self.increase_the_params('work')
+        return 'work'
+
+    def func25(self, output):
+        self.rust += self.get_the_rust(output)
+        if not self.check_the_rust_output(output, 'work'):
+            return CheckResult.wrong("The parameters weren't changed correctly.")
+        if not self.interface_prints_check(output):
+            return CheckResult.wrong("The interface is different from the exemplary one.")
+        self.increase_the_params('oil')
+        return 'oil'
+
+    def func26(self, output):
+        if not self.oil_what_prints(output):
+            return CheckResult.wrong("The robot should be oiled properly.")
+        if not self.interface_prints_check(output):
+            return CheckResult.wrong("The interface is different from the exemplary one.")
+        self.rust_previous = self.rust
+        self.increase_the_params('work')
+        return 'work'
+
+    def func27(self, output):
+        self.rust += self.get_the_rust(output)
+        if not self.check_the_rust_output(output, 'work'):
+            return CheckResult.wrong("The parameters weren't changed correctly.")
+        if not self.interface_prints_check(output):
+            return CheckResult.wrong("The interface is different from the exemplary one.")
+        self.increase_the_params('learn')
+        return 'learn'
+
+    def func28(self, output):
+        if not self.learn_changes(output):
+            return CheckResult.wrong("The robot learnt something wrong")
+        if not self.interface_prints_check(output):
+            return CheckResult.wrong("The interface is different from the exemplary one")
+        self.increase_the_params('sleep')
+        return 'sleep'
+
+    def func29(self, output):
+        if not self.sleep_what_prints(output):
+            return CheckResult.wrong("The robot should cool off properly")
+        if not self.interface_prints_check(output):
+            return CheckResult.wrong("The interface is different from the exemplary one")
+        self.increase_the_params('learn')
+        return 'learn'
+
+    def func30(self, output):
+        if not self.learn_changes(output):
+            return CheckResult.wrong("The robot learnt something wrong")
+        if not self.interface_prints_check(output):
+            return CheckResult.wrong("The interface is different from the exemplary one")
+        self.increase_the_params('learn')
+        return 'learn'
+
+    def func31(self, output):
+        if not self.learn_changes(output):
+            return CheckResult.wrong("The robot learnt something wrong")
+        if not self.interface_prints_check(output):
+            return CheckResult.wrong("The interface is different from the exemplary one")
+        return 'learn'
+
+    def func32(self, output):
+        if 'the level of the battery is 0, daneel needs recharging' not in output.lower():
+            return CheckResult.wrong("The robot must have run out of the battery by now")
+        if not self.interface_prints_check(output):
+            return CheckResult.wrong("The interface is different from the exemplary one")
+        return 'sleep'
+
+    def func33(self, output):
+        if 'the level of the battery is 0, daneel needs recharging' not in output.lower():
+            return CheckResult.wrong("The robot must have run out of the battery by now")
+        if not self.interface_prints_check(output):
+            return CheckResult.wrong("The interface is different from the exemplary one")
+        self.increase_the_params('recharge')
+        return 'recharge'
+
+    def func34(self, output):
+        if not self.recharge_what_prints(output):
+            return CheckResult.wrong("The robot didn't recharge correctly")
+        if not self.interface_prints_check(output):
+            return CheckResult.wrong("The interface is different from the exemplary one")
+        return 'exit'
+
+    """Test 4"""
+
+    def func35(self, output):
+        self.fresh_start()
+        if 'how will you call your robot?' not in output.lower():
+            return CheckResult.wrong("The program should suggest the user to name their robot")
+        return 'Daneel'
+
+    def func36(self, output):
+        if not self.interface_prints_check(output):
+            return CheckResult.wrong("The interface is different from the exemplary one")
+        self.increase_the_params('learn')
+        return 'learn'
 
     def func37(self, output):
-        if not self.numbers_what_prints_check(output):
-            return CheckResult.wrong('The program should ask the user for the number')
-        return '79'
+        if not self.learn_changes(output):
+            return CheckResult.wrong("The robot learnt something wrong")
+        if not self.interface_prints_check(output):
+            return CheckResult.wrong("The interface is different from the exemplary one")
+        self.increase_the_params('learn')
+        return 'learn'
 
     def func38(self, output):
+        if not self.learn_changes(output):
+            return CheckResult.wrong("The robot learnt something wrong")
+        if not self.interface_prints_check(output):
+            return CheckResult.wrong("The interface is different from the exemplary one")
+        self.increase_the_params('learn')
+        return 'learn'
+
+    def func39(self, output):
+        if not self.learn_changes(output):
+            return CheckResult.wrong("The robot learnt something wrong")
+        if not self.interface_prints_check(output):
+            return CheckResult.wrong("The interface is different from the exemplary one")
+        self.increase_the_params('learn')
+        return 'learn'
+
+    def func40(self, output):
+        if not self.learn_changes(output):
+            return CheckResult.wrong("The robot learnt something wrong")
+        if not self.interface_prints_check(output):
+            return CheckResult.wrong("The interface is different from the exemplary one")
+        self.increase_the_params('recharge')
+        return 'recharge'
+
+    def func41(self, output):
+        if not self.recharge_what_prints(output):
+            return CheckResult.wrong("The robot didn't recharge correctly")
+        if not self.interface_prints_check(output):
+            return CheckResult.wrong("The interface is different from the exemplary one")
+        self.increase_the_params('learn')
+        return 'learn'
+
+    def func42(self, output):
+        if not self.learn_changes(output):
+            return CheckResult.wrong("The robot learnt something wrong")
+        if not self.interface_prints_check(output):
+            return CheckResult.wrong("The interface is different from the exemplary one")
+        self.rust_previous = self.rust
+        self.increase_the_params('work')
+        return 'work'
+
+    def func43(self, output):
+        self.rust += self.get_the_rust(output)
+        if not self.check_the_rust_output(output, 'work'):
+            return CheckResult.wrong("The parameters weren't changed correctly.")
+        if not self.interface_prints_check(output):
+            return CheckResult.wrong("The interface is different from the exemplary one")
+        self.increase_the_params('oil')
+        return 'oil'
+
+    def func44(self, output):
+        if not self.oil_what_prints(output):
+            return CheckResult.wrong("The robot should be oiled properly.")
+        if not self.interface_prints_check(output):
+            return CheckResult.wrong("The interface is different from the exemplary one")
+        self.rust_previous = self.rust
+        self.increase_the_params('work')
+        return 'work'
+
+    def func45(self, output):
+        self.rust += self.get_the_rust(output)
+        if not self.check_the_rust_output(output, 'work'):
+            return CheckResult.wrong("The parameters weren't changed correctly.")
+        if not self.interface_prints_check(output):
+            return CheckResult.wrong("The interface is different from the exemplary one")
+        self.increase_the_params('oil')
+        return 'oil'
+
+    def func46(self, output):
+        if not self.oil_what_prints(output):
+            return CheckResult.wrong("The robot should be oiled properly.")
+        if not self.interface_prints_check(output):
+            return CheckResult.wrong("The interface is different from the exemplary one")
+        self.increase_the_params('sleep')
+        return 'sleep'
+
+    def func47(self, output):
+        if not self.sleep_what_prints(output):
+            return CheckResult.wrong("The robot should cool off properly")
+        if not self.interface_prints_check(output):
+            return CheckResult.wrong("The interface is different from the exemplary one")
+        self.increase_the_params('recharge')
+        return 'recharge'
+
+    def func48(self, output):
+        if not self.recharge_what_prints(output):
+            return CheckResult.wrong("The robot didn't recharge correctly")
+        if not self.interface_prints_check(output):
+            return CheckResult.wrong("The interface is different from the exemplary one")
+        self.increase_the_params('learn')
+        return 'learn'
+
+    def func49(self, output):
+        if not self.learn_changes(output):
+            return CheckResult.wrong("The robot learnt something wrong")
+        if not self.interface_prints_check(output):
+            return CheckResult.wrong("The interface is different from the exemplary one")
+        self.increase_the_params('recharge')
+        return 'recharge'
+
+    def func50(self, output):
+        if not self.recharge_what_prints(output):
+            return CheckResult.wrong("The robot didn't recharge correctly")
+        if not self.interface_prints_check(output):
+            return CheckResult.wrong("The interface is different from the exemplary one")
+        self.increase_the_params('learn')
+        return 'learn'
+
+    def func51(self, output):
+        if not self.learn_changes(output):
+            return CheckResult.wrong("The robot learnt something wrong")
+        if not self.interface_prints_check(output):
+            return CheckResult.wrong("The interface is different from the exemplary one")
+        self.increase_the_params('oil')
+        return 'oil'
+
+    def func52(self, output):
+        if not self.oil_what_prints(output):
+            return CheckResult.wrong("The robot should be oiled properly.")
+        if not self.interface_prints_check(output):
+            return CheckResult.wrong("The interface is different from the exemplary one")
+        self.rust_previous = self.rust
+        self.increase_the_params('work')
+        return 'work'
+
+    def func53(self, output):
+        self.rust += self.get_the_rust(output)
+        if not self.check_the_rust_output(output, 'work'):
+            return CheckResult.wrong("The parameters weren't changed correctly.")
+        if not self.interface_prints_check(output):
+            return CheckResult.wrong("The interface is different from the exemplary one")
+        self.increase_the_params('oil')
+        return 'oil'
+
+    def func54(self, output):
+        if not self.oil_what_prints(output):
+            return CheckResult.wrong("The robot should be oiled properly.")
+        if not self.interface_prints_check(output):
+            return CheckResult.wrong("The interface is different from the exemplary one")
+        self.increase_the_params('oil')
+        return 'oil'
+
+    def func55(self, output):
+        if not self.oil_what_prints(output):
+            return CheckResult.wrong("The robot should be oiled properly.")
+        if not self.interface_prints_check(output):
+            return CheckResult.wrong("The interface is different from the exemplary one")
+        self.increase_the_params('recharge')
+        return 'recharge'
+
+    def func56(self, output):
+        if not self.recharge_what_prints(output):
+            return CheckResult.wrong("The robot didn't recharge correctly")
+        if not self.interface_prints_check(output):
+            return CheckResult.wrong("The interface is different from the exemplary one")
+        self.increase_the_params('sleep')
+        return 'sleep'
+
+    def func57(self, output):
+        if not self.sleep_what_prints(output):
+            return CheckResult.wrong("The robot should cool off properly")
+        if not self.interface_prints_check(output):
+            return CheckResult.wrong("The interface is different from the exemplary one")
+        self.rust_previous = self.rust
+        self.increase_the_params('work')
+        return 'work'
+
+    def func58(self, output):
+        self.rust += self.get_the_rust(output)
+        if not self.check_the_rust_output(output, 'work'):
+            return CheckResult.wrong("The parameters weren't changed correctly.")
+        if not self.interface_prints_check(output):
+            return CheckResult.wrong("The interface is different from the exemplary one")
+        self.increase_the_params('oil')
+        return 'oil'
+
+    def func59(self, output):
+        if not self.oil_what_prints(output):
+            return CheckResult.wrong("The robot should be oiled properly.")
+        if not self.interface_prints_check(output):
+            return CheckResult.wrong("The interface is different from the exemplary one")
+        self.increase_the_params('learn')
+        return 'learn'
+
+    def func60(self, output):
+        if not self.learn_changes(output):
+            return CheckResult.wrong("The robot learnt something wrong")
+        if not self.interface_prints_check(output):
+            return CheckResult.wrong("The interface is different from the exemplary one")
+        return 'oil'
+
+    def func61(self, output):
+        if 'daneel is too bored! daneel needs to have fun' not in output.lower():
+            return CheckResult.wrong("The robot should be too bored by now")
+        if not self.interface_prints_check(output):
+            return CheckResult.wrong("The interface is different from the exemplary one")
+        return 'learn'
+
+    def func62(self, output):
+        if 'daneel is too bored! daneel needs to have fun' not in output.lower():
+            return CheckResult.wrong("The robot should be too bored by now")
+        if not self.interface_prints_check(output):
+            return CheckResult.wrong("The interface is different from the exemplary one")
+        return 'recharge'
+
+    def func63(self, output):
+        if 'daneel is too bored! daneel needs to have fun' not in output.lower():
+            return CheckResult.wrong("The robot should be too bored by now")
+        if not self.interface_prints_check(output):
+            return CheckResult.wrong("The interface is different from the exemplary one")
+        return 'sleep'
+
+    def func64(self, output):
+        if 'daneel is too bored! daneel needs to have fun' not in output.lower():
+           return CheckResult.wrong("The robot should be too bored by now")
+        if not self.interface_prints_check(output):
+            return CheckResult.wrong("The interface is different from the exemplary one")
+        self.boredom_previous = self.boredom
+        self.rust_previous = self.rust
+        self.increase_the_params('play')
+        return 'play'
+
+    def func65(self, output):
+        if not self.play_what_prints_check(output):
+            return CheckResult.wrong("The program should offer to choose a game")
+        return 'rock-paper-scissors'
+
+    def func66(self, output):
+        if not self.roshambo_what_prints_check(output):
+            return CheckResult.wrong("The game should ask the user for their move")
+        return 'rock'
+
+    def func67(self, output):
+        if not self.prs_print_check(output, 'rock'):
+            return CheckResult.wrong("Make sure your output is correct and complete")
+        if not self.roshambo_what_prints_check(output):
+            return CheckResult.wrong("The game should ask the user for their move")
+        return 'exit game'
+
+    def func68(self, output):
+        self.rust += self.get_the_rust(output)
+        if not self.game_statistics_prints_check(output, 'roshambo'):
+            return CheckResult.wrong("The statistics is incorrect")
+        if not self.check_the_rust_output(output, 'play'):
+            return CheckResult.wrong("You printed a wrong message")
+        if not self.interface_prints_check(output):
+            return CheckResult.wrong("The interface is different from the exemplary one")
+        self.increase_the_params('recharge')
+        return 'recharge'
+
+    def func69(self, output):
+        if not self.recharge_what_prints(output):
+            return CheckResult.wrong("The robot didn't recharge correctly")
+        if not self.interface_prints_check(output):
+            return CheckResult.wrong("The interface is different from the exemplary one")
+        self.increase_the_params('oil')
+        return 'oil'
+
+    def func70(self, output):
+        if not self.oil_what_prints(output):
+            return CheckResult.wrong("The robot should be oiled properly.")
+        if not self.interface_prints_check(output):
+            return CheckResult.wrong("The interface is different from the exemplary one")
+        return 'info'
+
+    def func71(self, output):
+        if not self.info_what_prints(output):
+            return CheckResult.wrong("The information is incorrect")
+        if not self.interface_prints_check(output):
+            return CheckResult.wrong("The interface is different from the exemplary one")
+        self.increase_the_params('learn')
+        return 'learn'
+
+    def func72(self, output):
+        if not self.learn_changes(output):
+            return CheckResult.wrong("The robot learnt something wrong")
+        if not self.interface_prints_check(output):
+            return CheckResult.wrong("The interface is different from the exemplary one")
+        self.increase_the_params('oil')
+        return 'oil'
+
+    def func73(self, output):
+        if not self.oil_what_prints(output):
+            return CheckResult.wrong("The robot should be oiled properly.")
+        if not self.interface_prints_check(output):
+            return CheckResult.wrong("The interface is different from the exemplary one")
+        self.increase_the_params('oil')
+        return 'oil'
+
+    def func74(self, output):
+        if not self.oil_what_prints(output):
+            return CheckResult.wrong("The robot should be oiled properly.")
+        if not self.interface_prints_check(output):
+            return CheckResult.wrong("The interface is different from the exemplary one")
+        self.boredom_previous = self.boredom
+        self.rust_previous = self.rust
+        self.increase_the_params('play')
+        return 'play'
+
+    def func75(self, output):
+        if not self.play_what_prints_check(output):
+            return CheckResult.wrong("The program should offer to choose a game")
+        return 'numbers'
+
+    def func76(self, output):
+        if not self.numbers_what_prints_check(output):
+            return CheckResult.wrong('The program should ask the user for the number')
+        return '797'
+
+    def func77(self, output):
+        if not self.normal_number_prints_check(output, 797):
+            return CheckResult.wrong("The result is incorrect or impossible to parse")
+        if not self.numbers_what_prints_check(output):
+            return CheckResult.wrong('The program should ask the user for the number')
+        return 'exit game'
+
+    def func78(self, output):
+        self.rust += self.get_the_rust(output)
+        if not self.game_statistics_prints_check(output, 'numbers'):
+            return CheckResult.wrong("The statistics is incorrect")
+        if not self.check_the_rust_output(output, 'play'):
+            return CheckResult.wrong("You printed a wrong message")
+        if not self.interface_prints_check(output):
+            return CheckResult.wrong("The interface is different from the exemplary one")
+        self.increase_the_params('learn')
+        return 'learn'
+
+    def func79(self, output):
+        if not self.learn_changes(output):
+            return CheckResult.wrong("The robot learnt something wrong")
+        if not self.interface_prints_check(output):
+            return CheckResult.wrong("The interface is different from the exemplary one")
+        return 'learn'
+
+    def func80(self, output):
+        if "there's nothing for daneel to learn" not in output.lower():
+            return CheckResult.wrong("The robot should be the cleverest by now")
+        if not self.interface_prints_check(output):
+            return CheckResult.wrong("The interface is different from the exemplary one")
+        return 'exit'
+
+    """Test 5"""
+
+    def func81(self, output):
+        self.fresh_start()
+        if 'how will you call your robot?' not in output.lower():
+            return CheckResult.wrong("The program should suggest the user to name their robot")
+        return 'Daneel'
+
+    def func82(self, output):
+        if not self.interface_prints_check(output):
+            return CheckResult.wrong("The interface is different from the exemplary one")
+        self.increase_the_params('learn')
+        return 'learn'
+
+    def func83(self, output):
+        if not self.learn_changes(output):
+            return CheckResult.wrong("The robot learnt something wrong")
+        if not self.interface_prints_check(output):
+            return CheckResult.wrong("The interface is different from the exemplary one")
+        self.increase_the_params('learn')
+        return 'learn'
+
+    def func84(self, output):
+        if not self.learn_changes(output):
+            return CheckResult.wrong("The robot learnt something wrong")
+        if not self.interface_prints_check(output):
+            return CheckResult.wrong("The interface is different from the exemplary one")
+        self.increase_the_params('learn')
+        return 'learn'
+
+    def func85(self, output):
+        if not self.learn_changes(output):
+            return CheckResult.wrong("The robot learnt something wrong")
+        if not self.interface_prints_check(output):
+            return CheckResult.wrong("The interface is different from the exemplary one")
+        self.increase_the_params('recharge')
+        return 'recharge'
+
+    def func86(self, output):
+        if not self.recharge_what_prints(output):
+            return CheckResult.wrong("The robot didn't recharge correctly")
+        if not self.interface_prints_check(output):
+            return CheckResult.wrong("The interface is different from the exemplary one")
+        self.increase_the_params('learn')
+        return 'learn'
+
+    def func87(self, output): # чекни
+        if not self.learn_changes(output):
+            return CheckResult.wrong("The robot learnt something wrong")
+        if not self.interface_prints_check(output):
+            return CheckResult.wrong("The interface is different from the exemplary one")
+        self.increase_the_params('learn')
+        return 'learn'
+
+    def func88(self, output):
+        if not self.learn_changes(output):
+            return CheckResult.wrong("The robot learnt something wrong")
+        if not self.interface_prints_check(output):
+            return CheckResult.wrong("The interface is different from the exemplary one")
+        self.increase_the_params('work')
+        return 'work'
+
+    def func89(self, output):
+        self.rust += self.get_the_rust(output)
+        if not self.check_the_rust_output(output, 'work'):
+            return CheckResult.wrong("The parameters weren't changed correctly.")
+        if not self.interface_prints_check(output):
+            return CheckResult.wrong("The interface is different from the exemplary one")
+        self.increase_the_params('learn')
+        return 'learn'
+
+    def func90(self, output):
+        if not self.learn_changes(output):
+            return CheckResult.wrong("The robot learnt something wrong")
+        if not self.interface_prints_check(output):
+            return CheckResult.wrong("The interface is different from the exemplary one")
+        self.increase_the_params('oil')
+        return 'oil'
+
+    def func91(self, output):
+        if not self.oil_what_prints(output):
+            return CheckResult.wrong("The robot should be oiled properly.")
+        self.increase_the_params('learn')
+        return 'learn'
+
+    def func92(self, output):
+        if not self.learn_changes(output):
+            return CheckResult.wrong("The robot learnt something wrong")
+        if not self.interface_prints_check(output):
+            return CheckResult.wrong("The interface is different from the exemplary one")
+        self.rust_previous = self.rust
+        self.increase_the_params('work')
+        return 'work'
+
+    def func93(self, output):
+        self.rust += self.get_the_rust(output)
+        if not self.check_the_rust_output(output, 'work'):
+            return CheckResult.wrong("The parameters weren't changed correctly.")
+        if not self.interface_prints_check(output):
+            return CheckResult.wrong("The interface is different from the exemplary one")
+        self.increase_the_params('learn')
+        return 'learn'
+
+    def func94(self, output):
+        if not self.learn_changes(output):
+            return CheckResult.wrong("The robot learnt something wrong")
+        if not self.interface_prints_check(output):
+            return CheckResult.wrong("The interface is different from the exemplary one")
+        self.increase_the_params('learn')
+        return 'learn'
+
+    """Test 6"""
+
+    def func95(self, output):
+        self.fresh_start()
+        self.zerify_numbers_count('numbers')
+        self.zerify_numbers_count('roshambo')
+        if 'how will you call your robot?' not in output.lower():
+            return CheckResult.wrong("The program should suggest the user to name their robot")
+        return 'Daneel'
+
+    def func96(self, output):
+        if not self.interface_prints_check(output):
+            return CheckResult.wrong("The interface is different from the exemplary one")
+        self.boredom_previous = self.boredom
+        self.rust_previous = self.rust
+        self.increase_the_params('play')
+        return 'play'
+
+    def func97(self, output):
+        if not self.play_what_prints_check(output):
+            return CheckResult.wrong("The program should offer to choose a game")
+        return 'numbers'
+
+    def func98(self, output):
+        if not self.numbers_what_prints_check(output):
+            return CheckResult.wrong('The program should ask the user for the number')
+        return '457'
+
+    def func99(self, output):
         if not self.normal_number_prints_check(output, 457):
             return CheckResult.wrong("The result is incorrect or impossible to parse")
         if not self.numbers_what_prints_check(output):
             return CheckResult.wrong('The program should ask the user for the number')
-        return '5098763'
+        return 'chamesh'
 
-    def func39(self, output):
-        if not self.numbers_exceptions(output, 5098763):
+    def func100(self, output):
+        if not self.numbers_exceptions(output, 'chamesh'):
+            return CheckResult.wrong("The program should inform the user about invalid input")
+        if not self.numbers_what_prints_check(output):
+            return CheckResult.wrong('The program should ask the user for the number')
+        return 'exit game'
+
+    def func101(self, output):
+        self.rust += self.get_the_rust(output)
+        if not self.game_statistics_prints_check(output, 'numbers'):
+            return CheckResult.wrong("The statistics is incorrect")
+        if not self.check_the_rust_output(output, 'play'):
+            return CheckResult.wrong("You printed a wrong message")
+        if not self.interface_prints_check(output):
+            return CheckResult.wrong("The interface is different from the exemplary one")
+        self.boredom_previous = self.boredom
+        self.rust_previous = self.rust
+        self.increase_the_params('play')
+        self.zerify_numbers_count('numbers')
+        return 'play'
+
+    def func102(self, output):
+        if not self.play_what_prints_check(output):
+            return CheckResult.wrong("The program should offer to choose a game")
+        return 'rock-paper-scissors'
+
+    def func103(self, output):
+        if not self.roshambo_what_prints_check(output):
+            return CheckResult.wrong("The game should ask the user for their move")
+        return 'scissors'
+
+    def func104(self, output):
+        if not self.prs_print_check(output, 'scissors'):
+            return CheckResult.wrong("Make sure your output is correct and complete")
+        if not self.roshambo_what_prints_check(output):
+            return CheckResult.wrong("The game should ask the user for their move")
+        return 'pen'
+
+    def func105(self, output):
+        if not self.knife_exception(output):
             return CheckResult.wrong("The program should inform the user about invalid input")
         return 'exit game'
 
-    def func40(self, output):
-        if not self.game_statistics_prints_check(output, 'numbers'):
-            return CheckResult.wrong("The statistics is incorrect")
-        if not self.interface_prints_check(output):
-            return CheckResult.wrong("The interface is different from the exemplary one")
-        self.increase_the_params('play')
-        self.zerify_numbers_count('numbers')
+    def func106(self, output):
+        self.rust += self.get_the_rust(output)
+        if self.rust >= 100:
+            if output[-10:] != "Daneel is too rusty! Game over. Try again?":
+                return CheckResult.wrong("The robot should be too rusty by now")
+        else:
+            if not self.game_statistics_prints_check(output, 'roshambo'):
+                return CheckResult.wrong("The statistics is incorrect")
+            if not self.check_the_rust_output(output, 'play'):
+                return CheckResult.wrong("You printed a wrong message")
+            if not self.interface_prints_check(output):
+                return CheckResult.wrong("The interface is different from the exemplary one")
+            self.zerify_numbers_count('roshambo')
+            self.boredom_previous = self.boredom
+            self.rust_previous = self.rust
+            self.increase_the_params('play')
         return 'play'
 
-    def func41(self, output):
+    def func107(self, output):
         if not self.play_what_prints_check(output):
             return CheckResult.wrong("The program should offer to choose a game")
-        return 'Rock-paper-scissors'
+        return 'u-95'
 
-    def func42(self, output):
-        if not self.roshambo_what_prints_check(output):
-            return CheckResult.wrong("The game should ask the user for their move")
-        return 'scissors'
-
-    def func43(self, output):
-        if not self.prs_print_check(output, 'scissors'):
-            return CheckResult.wrong("Make sure your output is correct and complete")
-        if not self.roshambo_what_prints_check(output):
-            return CheckResult.wrong("The game should ask the user for their move")
-        return 'exit game'
-
-    def func44(self, output):
-        if not self.game_statistics_prints_check(output, 'roshambo'):
-            return CheckResult.wrong("The statistics is incorrect")
-        if not self.interface_prints_check(output):
-            return CheckResult.wrong("The interface is different from the exemplary one")
-        self.zerify_numbers_count('roshambo')
-        self.increase_the_params('play')
-        return 'play'
-
-    def func45(self, output):
-        if not self.play_what_prints_check(output):
-            return CheckResult.wrong("The program should offer to choose a game")
-        return 'Numbers'
-
-    def func46(self, output):
-        if not self.numbers_what_prints_check(output):
-            return CheckResult.wrong("The game should ask the user for their move")
-        return '97825'
-
-    def func47(self, output):
-        if not self.normal_number_prints_check(output, 97825):
-            return CheckResult.wrong("The result is incorrect or impossible to parse")
-        if not self.numbers_what_prints_check(output):
-            return CheckResult.wrong("The game should ask the user for their move")
-        return 'exit game'
-
-    def func48(self, output):
-        if not self.game_statistics_prints_check(output, 'numbers'):
-            return CheckResult.wrong("The statistics is incorrect")
-        if not self.interface_prints_check(output):
-            return CheckResult.wrong("The interface is different from the exemplary one")
-        self.zerify_numbers_count('numbers')
-        self.increase_the_params('play')
-        return 'play'
-
-    def func49(self, output):
-        if not self.play_what_prints_check(output):
-            return CheckResult.wrong("The program should offer to choose a game")
-        return 'Rock-paper-scissors'
-
-    def func50(self, output):
-        if not self.roshambo_what_prints_check(output):
-            return CheckResult.wrong("The game should ask the user for their move")
-        return 'paper'
-
-    def func51(self, output):
-        if not self.prs_print_check(output, 'paper'):
-            return CheckResult.wrong("Make sure your output is correct and complete")
-        if not self.roshambo_what_prints_check(output):
-            return CheckResult.wrong("The game should ask the user for their move")
-        return 'exit game'
-
-    def func52(self, output):
-        if not self.game_statistics_prints_check(output, 'roshambo'):
-            return CheckResult.wrong("The statistics is incorrect")
-        if not self.interface_prints_check(output):
-            return CheckResult.wrong("The interface is different from the exemplary one")
-        self.zerify_numbers_count('roshambo')
-        self.increase_the_params('play')
-        return 'play'
-
-    def func53(self, output):
-        if not self.play_what_prints_check(output):
-            return CheckResult.wrong("The program should offer to choose a game")
-        return 'bombers'
-
-    def func54(self, output):
+    def func108(self, output):
         if "please choose a valid option: numbers or rock-paper-scissors?" not in output.lower():
             return CheckResult.wrong("The user should be informed about an invalid choice")
-        return 'Numbers'
+        return 'numbers'
 
-    def func55(self, output):
+    def func109(self, output):
         if not self.numbers_what_prints_check(output):
             return CheckResult.wrong("The game should ask the user for their move")
-        return '920853'
+        return '13579'
 
-    def func56(self, output):
-        if not self.normal_number_prints_check(output, 920853):
+    def func110(self, output):
+        if not self.normal_number_prints_check(output, 13579):
             return CheckResult.wrong("The result is incorrect or impossible to parse")
         if not self.numbers_what_prints_check(output):
             return CheckResult.wrong("The game should ask the user for their move")
-        return '740301'
+        return '5000003'
 
-    def func57(self ,output):
-        if not self.normal_number_prints_check(output, 740301):
+    def func111(self, output):
+        if not self.numbers_exceptions(output, 5000003):
+            return CheckResult.wrong("The program should inform the user about invalid input")
+        if not self.numbers_what_prints_check(output):
+            return CheckResult.wrong("The game should ask the user for their move")
+        return '77921'
+
+    def func112(self, output):
+        if not self.normal_number_prints_check(output, 77921):
             return CheckResult.wrong("The result is incorrect or impossible to parse")
         if not self.numbers_what_prints_check(output):
             return CheckResult.wrong("The game should ask the user for their move")
-        return '619765'
+        return '9'
 
-    def func58(self, output):
-        if not self.normal_number_prints_check(output, 619765):
-            return CheckResult.wrong("The result is incorrect or impossible to parse")
-        if not self.numbers_what_prints_check(output):
-            return CheckResult.wrong("The game should ask the user for their move")
-        return 'exit game'
-
-    def func59(self, output):
-        if not self.game_statistics_prints_check(output, 'numbers'):
-            return CheckResult.wrong("The statistics is incorrect")
-        if not self.interface_prints_check(output):
-            return CheckResult.wrong("The interface is different from the exemplary one")
-        self.zerify_numbers_count('numbers')
-        self.increase_the_params('play')
-        return 'play'
-
-    def func60(self, output):
-        if not self.play_what_prints_check(output):
-            return CheckResult.wrong("The program should offer to choose a game")
-        return 'Rock-paper-scissors'
-
-    def func61(self, output):
-        if not self.roshambo_what_prints_check(output):
-            return CheckResult.wrong("The game should ask the user for their move")
-        return 'rock'
-
-    def func62(self, output):
-        if not self.prs_print_check(output, 'rock'):
-            return CheckResult.wrong("Make sure your output is correct and complete")
-        if not self.roshambo_what_prints_check(output):
-            return CheckResult.wrong("The game should ask the user for their move")
-        return 'rock'
-
-    def func63(self, output):
-        if not self.prs_print_check(output, 'rock'):
-            return CheckResult.wrong("Make sure your output is correct and complete")
-        if not self.roshambo_what_prints_check(output):
-            return CheckResult.wrong("The game should ask the user for their move")
-        return 'rock'
-
-    def func64(self, output):
-        if not self.prs_print_check(output, 'rock'):
-            return CheckResult.wrong("Make sure your output is correct and complete")
-        if not self.roshambo_what_prints_check(output):
-            return CheckResult.wrong("The game should ask the user for their move")
-        return 'exit game'
-
-    def func65(self, output):
-        if not self.game_statistics_prints_check(output, 'roshambo'):
-            return CheckResult.wrong("The statistics is incorrect")
-        if not self.interface_prints_check(output):
-            return CheckResult.wrong("The interface is different from the exemplary one")
-        self.zerify_numbers_count('roshambo')
-        self.increase_the_params('play')
-        return 'play'
-
-    def func66(self, output):
-        if not self.play_what_prints_check(output):
-            return CheckResult.wrong("The program should offer to choose a game")
-        return 'Numbers'
-
-    def func67(self, output):
-        if not self.numbers_what_prints_check(output):
-            return CheckResult.wrong("The game should ask the user for their move")
-        return '995125'
-
-    def func68(self, output):
-        if not self.normal_number_prints_check(output, 995125):
+    def func113(self, output):
+        if not self.normal_number_prints_check(output, 9):
             return CheckResult.wrong("The result is incorrect or impossible to parse")
         if not self.numbers_what_prints_check(output):
             return CheckResult.wrong("The game should ask the user for their move")
         return 'exit game'
 
-    def func69(self, output):
-        if not self.game_statistics_prints_check(output, 'numbers'):
-            return CheckResult.wrong("The statistics is incorrect")
-        if not self.interface_prints_check(output):
-            return CheckResult.wrong("The interface is different from the exemplary one")
-        self.zerify_numbers_count('numbers')
-        self.increase_the_params('play')
+    def func114(self, output):
+        self.rust += self.get_the_rust(output)
+        if self.rust >= 100:
+            if output[-10:] != "Daneel is too rusty! Game over. Try again?":
+                return CheckResult.wrong("The robot should be too rusty by now")
+        else:
+            if not self.game_statistics_prints_check(output, 'numbers'):
+                return CheckResult.wrong("The statistics is incorrect")
+            if not self.check_the_rust_output(output, 'play'):
+                return CheckResult.wrong("You printed a wrong message")
+            if not self.interface_prints_check(output):
+                return CheckResult.wrong("The interface is different from the exemplary one")
+            self.zerify_numbers_count('numbers')
+            self.boredom_previous = self.boredom
+            self.rust_previous = self.rust
+            self.increase_the_params('play')
         return 'play'
 
-    def func70(self, output):
+    def func115(self, output):
         if not self.play_what_prints_check(output):
             return CheckResult.wrong("The program should offer to choose a game")
-        return 'Rock-paper-scissors'
+        return 'rock-paper-scissors'
 
-    def func71(self, output):
+    def func116(self, output):
+        if not self.roshambo_what_prints_check(output):
+            return CheckResult.wrong("The game should ask the user for their move")
+        return 'rock'
+
+    def func117(self, output):
+        if not self.prs_print_check(output, 'rock'):
+            return CheckResult.wrong("Make sure your output is correct and complete")
         if not self.roshambo_what_prints_check(output):
             return CheckResult.wrong("The game should ask the user for their move")
         return 'paper'
 
-    def func72(self, output):
+    def func118(self, output):
+        if not self.prs_print_check(output, 'paper'):
+            return CheckResult.wrong("Make sure your output is correct and complete")
+        if not self.roshambo_what_prints_check(output):
+            return CheckResult.wrong("The game should ask the user for their move")
+        return 'scissors'
+
+    def func119(self, output):
+        if not self.prs_print_check(output, 'scissors'):
+            return CheckResult.wrong("Make sure your output is correct and complete")
+        return 'exit game'
+
+    def func120(self, output):
+        self.rust += self.get_the_rust(output)
+        if self.rust >= 100:
+            if output[-10:] != "Daneel is too rusty! Game over. Try again?":
+                return CheckResult.wrong("The robot should be too rusty by now")
+        else:
+            if not self.game_statistics_prints_check(output, 'roshambo'):
+                return CheckResult.wrong("The statistics is incorrect")
+            if not self.check_the_rust_output(output, 'play'):
+                return CheckResult.wrong("You printed a wrong message")
+            if not self.interface_prints_check(output):
+                return CheckResult.wrong("The interface is different from the exemplary one")
+            self.zerify_numbers_count('roshambo')
+            self.boredom_previous = self.boredom
+            self.rust_previous = self.rust
+            self.increase_the_params('play')
+        return 'play'
+
+    def func121(self, output):
+        if not self.play_what_prints_check(output):
+            return CheckResult.wrong("The program should offer to choose a game")
+        return 'numbers'
+
+    def func122(self, output):
+        if not self.numbers_what_prints_check(output):
+            return CheckResult.wrong("The game should ask the user for their move")
+        return '999999'
+
+    def func123(self, output):
+        if not self.normal_number_prints_check(output, 999999):
+            return CheckResult.wrong("The result is incorrect or impossible to parse")
+        if not self.numbers_what_prints_check(output):
+            return CheckResult.wrong("The game should ask the user for their move")
+        return 'exit game'
+
+    def func124(self, output):
+        self.rust += self.get_the_rust(output)
+        if self.rust >= 100:
+            if output[-10:] != "Daneel is too rusty! Game over. Try again?":
+                return CheckResult.wrong("The robot should be too rusty by now")
+        else:
+            if not self.game_statistics_prints_check(output, 'numbers'):
+                return CheckResult.wrong("The statistics is incorrect")
+            if not self.check_the_rust_output(output, 'play'):
+                return CheckResult.wrong("You printed a wrong message")
+            if not self.interface_prints_check(output):
+                return CheckResult.wrong("The interface is different from the exemplary one")
+            self.zerify_numbers_count('numbers')
+            self.boredom_previous = self.boredom
+            self.rust_previous = self.rust
+            self.increase_the_params('play')
+        return 'play'
+
+    def func125(self, output):
+        if not self.play_what_prints_check(output):
+            return CheckResult.wrong("The program should offer to choose a game")
+        return 'rock-paper-scissors'
+
+    def func126(self, output):
+        if not self.roshambo_what_prints_check(output):
+            return CheckResult.wrong("The game should ask the user for their move")
+        return 'rock'
+
+    def func127(self, output):
+        if not self.prs_print_check(output, 'rock'):
+            return CheckResult.wrong("Make sure your output is correct and complete")
+        if not self.roshambo_what_prints_check(output):
+            return CheckResult.wrong("The game should ask the user for their move")
+        return 'exit game'
+
+    def func128(self, output):
+        self.rust += self.get_the_rust(output)
+        if self.rust >= 100:
+            if output[-10:] != "Daneel is too rusty! Game over. Try again?":
+                return CheckResult.wrong("The robot should be too rusty by now")
+        else:
+            if not self.game_statistics_prints_check(output, 'roshambo'):
+                return CheckResult.wrong("The statistics is incorrect")
+            if not self.check_the_rust_output(output, 'play'):
+                return CheckResult.wrong("You printed a wrong message")
+            if not self.interface_prints_check(output):
+                return CheckResult.wrong("The interface is different from the exemplary one")
+            self.zerify_numbers_count('roshambo')
+            self.boredom_previous = self.boredom
+            self.rust_previous = self.rust
+            self.increase_the_params('play')
+        return 'play'
+
+    def func129(self, output):
+        if not self.play_what_prints_check(output):
+            return CheckResult.wrong("The program should offer to choose a game")
+        return 'numbers'
+
+    def func130(self, output):
+        if not self.numbers_what_prints_check(output):
+            return CheckResult.wrong("The game should ask the user for their move")
+        return '27'
+
+    def func131(self, output):
+        if not self.normal_number_prints_check(output, 27):
+            return CheckResult.wrong("The result is incorrect or impossible to parse")
+        if not self.numbers_what_prints_check(output):
+            return CheckResult.wrong("The game should ask the user for their move")
+        return 'exit game'
+
+    def func132(self, output):
+        self.rust += self.get_the_rust(output)
+        if self.rust >= 100:
+            if output[-10:] != "Daneel is too rusty! Game over. Try again?":
+                return CheckResult.wrong("The robot should be too rusty by now")
+        else:
+            if not self.game_statistics_prints_check(output, 'numbers'):
+                return CheckResult.wrong("The statistics is incorrect")
+            if not self.check_the_rust_output(output, 'play'):
+                return CheckResult.wrong("You printed a wrong message")
+            if not self.interface_prints_check(output):
+                return CheckResult.wrong("The interface is different from the exemplary one")
+            self.zerify_numbers_count('numbers')
+            self.boredom_previous = self.boredom
+            self.rust_previous = self.rust
+            self.increase_the_params('play')
+        return 'play'
+
+    def func133(self, output):
+        if not self.play_what_prints_check(output):
+            return CheckResult.wrong("The program should offer to choose a game")
+        return 'rock-paper-scissors'
+
+    def func134(self, output):
+        if not self.roshambo_what_prints_check(output):
+            return CheckResult.wrong("The game should ask the user for their move")
+        return 'paper'
+
+    def func135(self, output):
         if not self.prs_print_check(output, 'paper'):
             return CheckResult.wrong("Make sure your output is correct and complete")
         if not self.roshambo_what_prints_check(output):
             return CheckResult.wrong("The game should ask the user for their move")
         return 'exit game'
 
-    def func73(self, output):
-        if not self.game_statistics_prints_check(output, 'roshambo'):
-            return CheckResult.wrong("The statistics is incorrect")
-        if not self.interface_prints_check(output):
-            return CheckResult.wrong("The interface is different from the exemplary one")
-        self.zerify_numbers_count('roshambo')
-        self.increase_the_params('play')
+    def func136(self, output):
+        self.rust += self.get_the_rust(output)
+        if self.rust >= 100:
+            if output[-10:] != "Daneel is too rusty! Game over. Try again?":
+                return CheckResult.wrong("The robot should be too rusty by now")
+        else:
+            if not self.game_statistics_prints_check(output, 'roshambo'):
+                return CheckResult.wrong("The statistics is incorrect")
+            if not self.check_the_rust_output(output, 'play'):
+                return CheckResult.wrong("You printed a wrong message")
+            if not self.interface_prints_check(output):
+                return CheckResult.wrong("The interface is different from the exemplary one")
+            self.zerify_numbers_count('roshambo')
+            self.boredom_previous = self.boredom
+            self.rust_previous = self.rust
+            self.increase_the_params('play')
         return 'play'
 
-    def func74(self, output):
+    def func137(self, output):
         if not self.play_what_prints_check(output):
             return CheckResult.wrong("The program should offer to choose a game")
-        return 'Numbers'
+        return 'numbers'
 
-    def func75(self, output):
+    def func138(self, output):
         if not self.numbers_what_prints_check(output):
-            return CheckResult.wrong('The program should ask the user for the number')
-        return '5563'
+            return CheckResult.wrong("The game should ask the user for their move")
+        return '435679'
 
-    def func76(self, output):
-        if not self.normal_number_prints_check(output, 5563):
+    def func139(self, output):
+        if not self.normal_number_prints_check(output, 435679):
             return CheckResult.wrong("The result is incorrect or impossible to parse")
-        if not self.numbers_what_prints_check(output):
-            return CheckResult.wrong('The program should ask the user for the number')
         return 'exit game'
 
-    def func77(self, output):
-        if not self.game_statistics_prints_check(output, 'numbers'):
-            return CheckResult.wrong("The statistics is incorrect")
+    def func140(self, output):
+        self.rust += self.get_the_rust(output)
+        if self.rust >= 100:
+            if output[-10:] != "Daneel is too rusty! Game over. Try again?":
+                return CheckResult.wrong("The robot should be too rusty by now")
+        else:
+            if not self.game_statistics_prints_check(output, 'numbers'):
+                return CheckResult.wrong("The statistics is incorrect")
+            if not self.check_the_rust_output(output, 'play'):
+                return CheckResult.wrong("You printed a wrong message")
+            if not self.interface_prints_check(output):
+                return CheckResult.wrong("The interface is different from the exemplary one")
+            self.zerify_numbers_count('numbers')
+            self.boredom_previous = self.boredom
+            self.rust_previous = self.rust
+            self.increase_the_params('play')
+        return 'exit'
+
+    """Test 7"""
+
+    def func141(self, output):
+        self.fresh_start()
+        self.zerify_numbers_count('numbers')
+        self.zerify_numbers_count('roshambo')
+        if 'how will you call your robot?' not in output.lower():
+            return CheckResult.wrong("The program should suggest the user to name their robot")
+        return 'Daneel'
+
+    def func142(self, output):
         if not self.interface_prints_check(output):
             return CheckResult.wrong("The interface is different from the exemplary one")
+        self.increase_the_params('learn')
+        return 'learn'
+
+    def func143(self, output):
+        if not self.learn_changes(output):
+            return CheckResult.wrong("The robot learnt something wrong")
+        if not self.interface_prints_check(output):
+            return CheckResult.wrong("The interface is different from the exemplary one")
+        self.increase_the_params('learn')
+        return 'learn'
+
+    def func144(self, output):
+        if not self.learn_changes(output):
+            return CheckResult.wrong("The robot learnt something wrong")
+        if not self.interface_prints_check(output):
+            return CheckResult.wrong("The interface is different from the exemplary one")
+        self.increase_the_params('learn')
+        return 'learn'
+
+    def func145(self, output):
+        if not self.learn_changes(output):
+            return CheckResult.wrong("The robot learnt something wrong")
+        if not self.interface_prints_check(output):
+            return CheckResult.wrong("The interface is different from the exemplary one")
+        self.increase_the_params('learn')
+        return 'learn'
+
+    def func146(self, output):
+        if not self.learn_changes(output):
+            return CheckResult.wrong("The robot learnt something wrong")
+        if not self.interface_prints_check(output):
+            return CheckResult.wrong("The interface is different from the exemplary one")
+        self.increase_the_params('learn')
+        return 'learn'
+
+    def func147(self, output):
+        if not self.learn_changes(output):
+            return CheckResult.wrong("The robot learnt something wrong")
+        if not self.interface_prints_check(output):
+            return CheckResult.wrong("The interface is different from the exemplary one")
+        self.boredom_previous = self.boredom
+        self.rust_previous = self.rust
         self.increase_the_params('play')
         return 'play'
 
-    def func78(self, output):
+    def func148(self, output):
         if not self.play_what_prints_check(output):
             return CheckResult.wrong("The program should offer to choose a game")
-        return 'Rock-paper-scissors'
+        return 'rock-paper-scissors'
 
-    def func79(self, output):
+    def func149(self, output):
         if not self.roshambo_what_prints_check(output):
             return CheckResult.wrong("The game should ask the user for their move")
         return 'scissors'
 
-    def func80(self, output):
+    def func150(self, output):
         if not self.prs_print_check(output, 'scissors'):
             return CheckResult.wrong("Make sure your output is correct and complete")
         if not self.roshambo_what_prints_check(output):
             return CheckResult.wrong("The game should ask the user for their move")
         return 'exit game'
 
+    def func151(self, output):
+        self.rust += self.get_the_rust(output)
+        if not self.game_statistics_prints_check(output, 'roshambo'):
+            return CheckResult.wrong("The statistics is incorrect")
+        if not self.check_the_rust_output(output, 'play'):
+            return CheckResult.wrong("You printed a wrong message")
+        if not self.interface_prints_check(output):
+            return CheckResult.wrong("The interface is different from the exemplary one")
+        self.zerify_numbers_count('roshambo')
+        self.boredom_previous = self.boredom
+        self.rust_previous = self.rust
+        self.increase_the_params('work')
+        return 'work'
+
+    def func152(self, output):
+        self.rust += self.get_the_rust(output)
+        if self.rust >= 100:
+            if output[-10:] != "Daneel is too rusty! Game over. Try again?":
+                return CheckResult.wrong("The robot should be too rusty by now")
+        else:
+            if not self.check_the_rust_output(output, 'work'):
+                return CheckResult.wrong("The parameters weren't changed correctly.")
+            if not self.interface_prints_check(output):
+                return CheckResult.wrong("The interface is different from the exemplary one")
+            self.rust_previous = self.rust
+            self.increase_the_params('work')
+        return 'work'
+
+    def func153(self, output):
+        self.rust += self.get_the_rust(output)
+        if self.rust >= 100:
+            if output[-10:] != "Daneel is too rusty! Game over. Try again?":
+                return CheckResult.wrong("The robot should be too rusty by now")
+        else:
+            if not self.check_the_rust_output(output, 'work'):
+                return CheckResult.wrong("The parameters weren't changed correctly.")
+            if not self.interface_prints_check(output):
+                return CheckResult.wrong("The interface is different from the exemplary one")
+            self.increase_the_params('recharge')
+        return 'recharge'
+
+    def func154(self, output):
+        if not self.recharge_what_prints(output):
+            return CheckResult.wrong("The program should print that the robot is charged")
+        if not self.interface_prints_check(output):
+            return CheckResult.wrong("The interface is different from the exemplary one")
+        self.rust_previous = self.rust
+        self.increase_the_params('work')
+        return 'work'
+
+    def func155(self, output):
+        self.rust += self.get_the_rust(output)
+        if self.rust >= 100:
+            if output[-10:] != "Daneel is too rusty! Game over. Try again?":
+                return CheckResult.wrong("The robot should be too rusty by now")
+        else:
+            if not self.check_the_rust_output(output, 'work'):
+                return CheckResult.wrong("The parameters weren't changed correctly.")
+            if not self.interface_prints_check(output):
+                return CheckResult.wrong("The interface is different from the exemplary one")
+            self.increase_the_params('sleep')
+        return 'sleep'
+
+    def func156(self, output):
+        if not self.interface_prints_check(output):
+            return CheckResult.wrong("The interface is different from the exemplary one")
+        self.increase_the_params('sleep')
+        return 'sleep'
+
+    def func157(self, output):
+        if not self.sleep_what_prints(output):
+            return CheckResult.wrong("The robot should cool off properly")
+        if not self.interface_prints_check(output):
+            return CheckResult.wrong("The interface is different from the exemplary one")
+        self.rust_previous = self.rust
+        self.increase_the_params('work')
+        return 'work'
+
+    def func158(self, output):
+        self.rust += self.get_the_rust(output)
+        if self.rust >= 100:
+            if output[-10:] != "Daneel is too rusty! Game over. Try again?":
+                return CheckResult.wrong("The robot should be too rusty by now")
+        else:
+            if not self.check_the_rust_output(output, 'work'):
+                return CheckResult.wrong("The parameters weren't changed correctly.")
+            if not self.interface_prints_check(output):
+                return CheckResult.wrong("The interface is different from the exemplary one")
+            self.rust_previous = self.rust
+            self.increase_the_params('work')
+        return 'work'
+
+    def func159(self, output):
+        self.rust += self.get_the_rust(output)
+        if self.rust >= 100:
+            if output[-10:] != "Daneel is too rusty! Game over. Try again?":
+                return CheckResult.wrong("The robot should be too rusty by now")
+        else:
+            if not self.check_the_rust_output(output, 'work'):
+                return CheckResult.wrong("The parameters weren't changed correctly.")
+            if not self.interface_prints_check(output):
+                return CheckResult.wrong("The interface is different from the exemplary one")
+            self.rust_previous = self.rust
+            self.increase_the_params('recharge')
+        return 'recharge'
+
+    def func160(self, output):
+        if not self.recharge_what_prints(output):
+            return CheckResult.wrong("The robot didn't recharge correctly")
+        if not self.interface_prints_check(output):
+            return CheckResult.wrong("The interface is different from the exemplary one")
+        self.rust_previous = self.rust
+        self.increase_the_params('work')
+        return 'work'
+
+    def func161(self, output):
+        self.rust += self.get_the_rust(output)
+        if self.rust >= 100:
+            if output[-10:] != "Daneel is too rusty! Game over. Try again?":
+                return CheckResult.wrong("The robot should be too rusty by now")
+        else:
+            if not self.check_the_rust_output(output, 'work'):
+                return CheckResult.wrong("The parameters weren't changed correctly.")
+            if not self.interface_prints_check(output):
+                return CheckResult.wrong("The interface is different from the exemplary one")
+            self.rust_previous = self.rust
+            self.increase_the_params('work')
+        return 'work'
+
+    def func162(self, output):
+        self.rust += self.get_the_rust(output)
+        if self.rust >= 100:
+            if output[-10:] != "Daneel is too rusty! Game over. Try again?":
+                return CheckResult.wrong("The robot should be too rusty by now")
+        else:
+            if not self.check_the_rust_output(output, 'work'):
+                return CheckResult.wrong("The parameters weren't changed correctly.")
+            if not self.interface_prints_check(output):
+                return CheckResult.wrong("The interface is different from the exemplary one")
+            self.rust_previous = self.rust
+            self.increase_the_params('work')
+
     def check(self, reply: str, attach: Any) -> CheckResult:
-        if "game over" not in reply.lower():
+        if 'game over' not in reply.lower():
             return CheckResult.wrong("The program should print that the game is over")
         return CheckResult.correct()
+
 
     def check_boom(self, reply: str, attach: Any) -> CheckResult:
         check = 'the level of overheat reached 100, daneel has blown up' in reply.lower()
@@ -836,5 +1735,13 @@ class PreRobogotchiTest(RobogotchiTestParent):
             return CheckResult.wrong("The program should print that the game is over")
         return CheckResult.correct()
 
+    def check_rust(self, reply: str, attach: Any) -> CheckResult:
+        check = 'daneel is too rusty' in reply.lower() and 'game over' in reply.lower() and 'try again?' in reply.lower()
+        if not check:
+            return CheckResult.wrong("The robot should be too rusty by now")
+        return CheckResult.correct()
+
+
 if __name__ == '__main__':
-    PreRobogotchiTest().run_tests()
+    RobogotchiTest1().run_tests()
+

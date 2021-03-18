@@ -106,6 +106,9 @@ files:
             if (self.rust == 0) and ('fine' in output):
                 if "Daneel is fine, no need to oil" not in output:
                     return False
+            elif self.boredom == 100:
+                if "Daneel is too bored" not in output:
+                    return False
             else:
                 i = 10 if 'was 10' in output else 20
                 text = f"Daneel's level of rust was {self.rust+i}. Now it is {self.rust}." \
@@ -1754,5 +1757,8 @@ files:
 
   learner_created: false
 feedback_link: https://hyperskill.org/projects/135/stages/723/implement#comment
-status: Unchecked
+status: Solved
+feedback:
+  message: Congratulations!
+  time: Thu, 18 Mar 2021 00:20:35 UTC
 record: -1
